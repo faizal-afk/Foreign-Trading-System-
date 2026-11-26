@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block body %}
+<section class="hero"><h1>Discover products from around the world</h1><p>Search international products and view their prices converted into Indian Rupees using the latest available reference exchange rates.</p></section>
+{% if rate_error %}<p class="flash danger">{{rate_error}}</p>{% endif %}
+<form class="search" action="/" method="get" autocomplete="off"><div class="searchbox"><input id="product-search" name="q" value="{{q}}" placeholder="Search products, countries or categories..." aria-label="Search products"><div id="search-suggestions" class="suggestions" role="listbox"></div></div><select name="category"><option value="">All categories</option>{% for c in categories %}<option value="{{c}}" {% if cat==c %}selected{% endif %}>{{c}}</option>{% endfor %}</select><button type="submit">Search</button></form>
+<div class="search-hint">Try: headphones, camera, skincare, shoes, Japan, Germany</div>
+<div class="result-count">{{products|length}} products shown{% if q %} for “{{q}}”{% endif %}</div>
+<div class="grid">{% for p in products %}<article><small>{{p.country}} · {{p.category}}</small><h3>{{p.name}}</h3><p>{{p.description}}</p><p><small>{{"%.2f"|format(p.original_price)}} {{p.currency_code}}</small></p><strong>₹{{"%.2f"|format(p.converted_price_inr)}}</strong><p><small>Rate date: {{p.rate_date}}</small></p><p><a class="btn" href="/product/{{p.id}}">View product</a></p></article>{% else %}{% if not rate_error %}<p>No products found. Try another product name or category.</p>{% endif %}{% endfor %}</div>
+<script>
+(() => {
+ const input=document.getElementById('product-search');
+ const box=document.getElementById('search-suggestions');
+ let timer;
+ const hide=()=>{box.innerHTML='';box.classList.remove('visible');};
+ input.addEventListener('input',()=>{
+   clearTimeout(timer); const q=input.value.trim();
+   if(!q){hide();return;}
+   timer=setTimeout(async()=>{
+     try{
+       const response=await fetch('/suggest?q='+encodeURIComponent(q));
+       const items=await response.json(); box.innerHTML='';
+       if(!items.length){box.innerHTML='<div class="suggestion-empty">No matching products found</div>';box.classList.add('visible');return;}
+       items.forEach(item=>{
+         const a=document.createElement('a'); a.className='suggestion'; a.href='/product/'+item.id;
+         const name=document.createElement('strong'); name.textContent=item.name;
+         const meta=document.createElement('small'); meta.textContent=item.country+' · '+item.category;
+         a.append(name,meta); box.appendChild(a);
+       }); box.classList.add('visible');
+     }catch(e){hide();}
+   },180);
+ });
+ document.addEventListener('click',e=>{if(!e.target.closest('.searchbox'))hide();});
+ input.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+})();
+</script>
+{% endblock %}
